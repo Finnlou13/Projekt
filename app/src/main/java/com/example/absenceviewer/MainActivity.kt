@@ -80,6 +80,8 @@ data class Absence(val name: String, val subCategory : String, val begin : Int, 
 
 data class DayAbsence(val day: String ,val absenceOfClasses : Map<String,List<Absence>>)//absenceOfClasss is a map where the class name is maped to a List of Absences
 
+//TODO: implement data classes Lesson
+
 class AbsencePlan{
     private val monthMapping : Map<String, String> = mapOf(
         "JANUARY" to "januar",
@@ -195,6 +197,29 @@ class AbsencePlan{
         }
         return subClassAbsence
     }
+}
+
+//TODO:
+// class für den Stundenplan des Benutzers
+class LessonPlan {
+    //private Map<LessonDay> days;
+    fun addDay(LessonDay day) {
+
+    }
+
+    fun addLesson() {
+
+    }
+
+    fun getDay() : LessonDay {
+
+    }
+
+}
+
+//TODO:
+class LessonDay {
+    //Map<Lesson> lessons
 }
 
 @Composable
@@ -320,6 +345,20 @@ fun updateMessagedGrades(grade : String, isChecked : Boolean){
 }
 
 @Composable
+fun TabChanger(lifecycleOwner: LifecycleOwner, appSettings: MessageFilter) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .fillMaxHeight(0.1F)
+            .background(boxColor)
+    )
+    {
+        // Hier slider für Tabs einfügen
+
+    }
+}
+
+@Composable
 fun GreetingPreview(mainActivity: MainActivity, appSettings: MessageFilter) {
 
     AbsenceViewerTheme {
@@ -358,6 +397,7 @@ fun GreetingPreview(mainActivity: MainActivity, appSettings: MessageFilter) {
 
                 )
             }
+            TabChanger(mainActivity,appSettings)
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -365,6 +405,8 @@ fun GreetingPreview(mainActivity: MainActivity, appSettings: MessageFilter) {
                     .background(backgroundColor)
             )
             {
+                //TODO: content loader
+                // loads content according to the selected tab
                 LoadAbsences(mainActivity,appSettings)
             }
         }
