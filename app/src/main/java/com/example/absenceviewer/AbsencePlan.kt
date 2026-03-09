@@ -71,6 +71,9 @@ class AbsencePlan{
             absences.add(transformDay(it))
         }
         println(absences)
+
+        //TODO: filter Absences for class or teacher the user has
+
         return absences
     }
 
