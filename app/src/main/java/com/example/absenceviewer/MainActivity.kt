@@ -1,6 +1,7 @@
 package com.example.absenceviewer
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -11,10 +12,13 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,9 +28,14 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -51,16 +60,10 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.example.absenceviewer.ui.theme.AbsenceViewerTheme
+import com.example.absenceviewer.ui.theme.LocalCustomColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
-val bannerColor =  Color(62, 103, 121)
-val backgroundColor = Color(90, 58, 49)
-val borderColor = Color(56, 59, 83)
-val boxColor = Color(49, 134, 29)
-val cardColor = Color(196, 203, 202)
-val innerBoxColor = Color(242, 245, 234)
 
 class MainActivity : ComponentActivity() {
 
@@ -70,7 +73,6 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            // Beispiel für eine Benachrichtigung beim App-Start
             NotificationHelper.sendNotification("Test", "App wurde gestartet")
         }
     }
@@ -78,27 +80,36 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Initialize Global Notification Helper
         NotificationHelper.initialize(this)
-
         appSettings = MessageFilter(this)
+
+        val sharedPref = getPreferences(Context.MODE_PRIVATE)
+        var themeMode by mutableIntStateOf(sharedPref.getInt("theme_mode", 0))
 
         enableEdgeToEdge()
         setContent {
-            MainView(this, appSettings)
+            AbsenceViewerTheme(themeMode = themeMode) {
+                MainView(
+                    mainActivity = this,
+                    appSettings = appSettings,
+                    currentTheme = themeMode,
+                    onThemeChange = { newTheme ->
+                        themeMode = newTheme
+                        sharedPref.edit().putInt("theme_mode", newTheme).apply()
+                    }
+                )
+            }
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
                 PackageManager.PERMISSION_GRANTED
             ) {
-                // Beispiel für eine Benachrichtigung beim App-Start
                 NotificationHelper.sendNotification("Test", "App wurde gestartet")
             } else {
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         } else {
-            // Beispiel für eine Benachrichtigung beim App-Start
             NotificationHelper.sendNotification("Test", "App wurde gestartet")
         }
     }
@@ -108,26 +119,20 @@ data class Absence(val name: String, val subCategory : String, val begin : Int, 
 
 data class DayAbsence(val day: String ,val absenceOfClasses : Map<String,List<Absence>>)//absenceOfClasss is a map where the class name is maped to a List of Absences
 
-//TODO: implement data classes Lesson
-
 @Composable
 fun LoadAbsences(lifecycleOwner: LifecycleOwner, appSettings: MessageFilter){
     var result by remember { mutableStateOf<List<DayAbsence>?>(null) }
-
-    //TODO: edit layout for more pleasing design
 
     LaunchedEffect(key1 = Unit) {
         lifecycleOwner.lifecycleScope.launch {
             withContext(Dispatchers.IO) {
                 val absencePlan = AbsencePlan()
-                // Perform network operations here
                 result = absencePlan.getAbsences()
             }
         }
     }
     val scrollState = rememberScrollState()
 
-    //Text(text = "Result : ${result ?: "Loading..."}")
     Column (
         modifier = Modifier
             .verticalScroll(scrollState)
@@ -136,75 +141,64 @@ fun LoadAbsences(lifecycleOwner: LifecycleOwner, appSettings: MessageFilter){
             AbsenceCards(dayAbsence)
         }
     }
-
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AbsenceCards(dayAbsence: DayAbsence){
-    //TODO: edit layout for more pleasing design
+    val customColors = LocalCustomColors.current
     Box(
         modifier = Modifier
             .padding(8.dp)
-            .border(2.dp, borderColor) // Add a border (optional)
-            .background(boxColor)
+            .border(2.dp, customColors.border)
+            .background(customColors.box)
             .fillMaxWidth()
-
-
     ) {
         Column (
             modifier = Modifier.padding(8.dp)
-        ){ // Arrange header and Card vertically
+        ){
             Text(
                 text = dayAbsence.day,
-                style = TextStyle(fontWeight = FontWeight.ExtraBold),
+                style = TextStyle(fontWeight = FontWeight.ExtraBold, color = customColors.onBox),
                 modifier = Modifier
                     .padding(top = 4.dp, bottom = 8.dp)
-
-
             )
             for (currentClass in dayAbsence.absenceOfClasses.keys) {
                 Card(
                     colors = CardDefaults.cardColors(
-                        containerColor =  cardColor,
-
+                        containerColor =  customColors.card,
                     ),
                     modifier = Modifier
                         .padding(4.dp)
                 ) {
                     Text(
                         text = currentClass,
-                        style = TextStyle(fontWeight = FontWeight.Bold),
+                        style = TextStyle(fontWeight = FontWeight.Bold, color = customColors.onCard),
                         modifier = Modifier
                             .padding(8.dp)
-
                     )
                     FlowRow(
                         modifier = Modifier
                             .padding(8.dp)
                             .fillMaxWidth()
-
                     ) {
                         for (absence in dayAbsence.absenceOfClasses[currentClass] ?: emptyList()) {
                             LessonAbsence(absence,currentClass)
                         }
                     }
-
                 }
             }
         }
     }
 }
 
-
-
 @Composable
 fun LessonAbsence(lesson : Absence, grade: String){
-    //TODO: edit layout for more pleasing design
+    val customColors = LocalCustomColors.current
     var isChecked: Boolean by remember { mutableStateOf(false) }
     Card(
         colors = CardDefaults.cardColors(
-            containerColor = innerBoxColor,
+            containerColor = customColors.innerBox,
         ),
         modifier = Modifier
             .padding(4.dp)
@@ -214,20 +208,16 @@ fun LessonAbsence(lesson : Absence, grade: String){
         Text(
             modifier = Modifier
             .padding(start = 8.dp),
-
             text = "Stunde " + lesson.begin.toString() + "-" + (lesson.begin + lesson.duration - 1).toString() + "\n" + lesson.name + "\n" + lesson.subCategory,
-            style = TextStyle(fontWeight = FontWeight.Bold)
-
+            style = TextStyle(fontWeight = FontWeight.Bold, color = customColors.onInnerBox)
         )
         Checkbox(
             checked = isChecked,
             onCheckedChange = {
                 newCheckedState ->
                 isChecked = newCheckedState
-
                 updateMessagedGrades(grade,newCheckedState)
             }
-
         )
     }
 }
@@ -237,16 +227,34 @@ fun AbsencePlanTab(lifecycleOwner: LifecycleOwner, appSettings: MessageFilter){
     LoadAbsences(lifecycleOwner, appSettings)
 }
 
-// no priority, maybe discard
-//@Composable
-//fun ScheduleTab(lifecycleOwner: LifecycleOwner, appSettings: MessageFilter){
-//    Text("Schedule Content", color = Color.White)
-//}
-
-//TODO: change from Tab to Button on top right corner
 @Composable
-fun SettingsTab(lifecycleOwner: LifecycleOwner, appSettings: MessageFilter){
-    Text("Settings Content", color = Color.White)
+fun SettingsTab(currentTheme: Int, onThemeChange: (Int) -> Unit){
+    val customColors = LocalCustomColors.current
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Text("Theme Settings", color = customColors.onBackground, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            RadioButton(
+                selected = currentTheme == 0,
+                onClick = { onThemeChange(0) }
+            )
+            Text("Tannenzapfen - Finns special´", color = customColors.onBackground, modifier = Modifier.padding(start = 8.dp))
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            RadioButton(
+                selected = currentTheme == 1,
+                onClick = { onThemeChange(1) }
+            )
+            Text("Blue Theme", color = customColors.onBackground, modifier = Modifier.padding(start = 8.dp))
+        }
+    }
 }
 
 fun updateMessagedGrades(grade : String, isChecked : Boolean){
@@ -256,15 +264,16 @@ fun updateMessagedGrades(grade : String, isChecked : Boolean){
 @Composable
 fun TabChanger(selectedTabIndex: Int,
                onTabSelected: (Int) -> Unit) {
-    val tabs = listOf("Absences", /*"Schedule",*/ "Settings")
+    val customColors = LocalCustomColors.current
+    val tabs = listOf("Absences", "Settings")
     TabRow(
         selectedTabIndex = selectedTabIndex,
         modifier = Modifier
             .fillMaxWidth()
             .fillMaxHeight(0.1F)
-            .background(boxColor) ,
-        containerColor = boxColor,
-        contentColor = Color.White
+            .background(customColors.box) ,
+        containerColor = customColors.box,
+        contentColor = customColors.onBox
     )
     {
             tabs.forEachIndexed { index, title ->
@@ -280,20 +289,18 @@ fun TabChanger(selectedTabIndex: Int,
                 )
             }
     }
-
-
 }
 
 @Composable
-fun StundenplanAdd(){
+fun StundenplanAdd(onSettingsClick: () -> Unit){
+    val customColors = LocalCustomColors.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .fillMaxHeight(0.1F)
-            .background(bannerColor)
+            .background(customColors.banner)
     )
     {
-
         Image(
             painter = painterResource(R.drawable.logo),
             contentDescription = "Logo",
@@ -315,45 +322,53 @@ fun StundenplanAdd(){
             fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
             color = Color.White,
             fontWeight = FontWeight(1000)
-
         )
+        
+        IconButton(
+            onClick = onSettingsClick,
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(8.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Settings,
+                contentDescription = "Settings",
+                tint = Color.White
+            )
+        }
     }
 }
 
-
 @Composable
-fun MainView(mainActivity: MainActivity, appSettings: MessageFilter) {
+fun MainView(
+    mainActivity: MainActivity, 
+    appSettings: MessageFilter,
+    currentTheme: Int,
+    onThemeChange: (Int) -> Unit
+) {
+    val customColors = LocalCustomColors.current
     var selectedTabIndex by remember { mutableIntStateOf(0) }
 
-    //TODO: change Layout to have a bit of extra padding on top of the screen to make sure the camera of the phone doesn't block the view
+    Column()
+    {
+        StundenplanAdd(onSettingsClick = { selectedTabIndex = 1 })
 
-    AbsenceViewerTheme {
-        Column()
+        TabChanger(
+            selectedTabIndex = selectedTabIndex,
+            onTabSelected = { newIndex -> selectedTabIndex = newIndex }
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight()
+                .background(customColors.background)
+        )
         {
-            // Header
-            StundenplanAdd()
-            //TODO: add a Settings button with an icon to get to the settings tab
-
-            TabChanger(
-                selectedTabIndex = selectedTabIndex,
-                onTabSelected = { newIndex -> selectedTabIndex = newIndex }
-            )
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .fillMaxHeight()
-                    .background(backgroundColor)
-            )
-            {
-
-                when (selectedTabIndex) {
-                    0 -> AbsencePlanTab(mainActivity, appSettings)
-                    //1 -> ScheduleTab(mainActivity, appSettings)
-                    1 -> SettingsTab(mainActivity, appSettings)
-                }
+            when (selectedTabIndex) {
+                0 -> AbsencePlanTab(mainActivity, appSettings)
+                1 -> SettingsTab(currentTheme, onThemeChange)
             }
         }
-
     }
 }
