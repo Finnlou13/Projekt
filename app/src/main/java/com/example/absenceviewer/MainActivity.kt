@@ -1,8 +1,6 @@
 package com.example.absenceviewer
 
 import android.Manifest
-import android.app.NotificationChannel
-import android.app.NotificationManager
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -49,7 +47,6 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
@@ -73,12 +70,16 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.RequestPermission()
     ) { isGranted: Boolean ->
         if (isGranted) {
-            sendTestNotification()
+            // Beispiel für eine Benachrichtigung beim App-Start
+            NotificationHelper.sendNotification("Test", "App wurde gestartet")
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Initialize Global Notification Helper
+        NotificationHelper.initialize(this)
 
         appSettings = MessageFilter(this)
 
@@ -87,45 +88,19 @@ class MainActivity : ComponentActivity() {
             MainView(this, appSettings)
         }
 
-        createNotificationChannel()
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
                 PackageManager.PERMISSION_GRANTED
             ) {
-                sendTestNotification()
+                // Beispiel für eine Benachrichtigung beim App-Start
+                NotificationHelper.sendNotification("Test", "App wurde gestartet")
             } else {
                 requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
         } else {
-            sendTestNotification()
+            // Beispiel für eine Benachrichtigung beim App-Start
+            NotificationHelper.sendNotification("Test", "App wurde gestartet")
         }
-    }
-
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "test"
-            val descriptionText = "Test Notification Channel"
-            val importance = NotificationManager.IMPORTANCE_DEFAULT
-            val channel = NotificationChannel("id", name, importance).apply {
-                description = descriptionText
-            }
-            val notificationManager: NotificationManager =
-                getSystemService(NotificationManager::class.java)
-            notificationManager.createNotificationChannel(channel)
-        }
-    }
-
-    private fun sendTestNotification() {
-        val notification = NotificationCompat.Builder(this, "id")
-            .setContentTitle("Test")
-            .setContentText("App wurde gestartet")
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
-            .build()
-
-        val manager = getSystemService(NotificationManager::class.java)
-        manager.notify(1, notification)
     }
 }
 
