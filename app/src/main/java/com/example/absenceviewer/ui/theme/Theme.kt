@@ -56,13 +56,6 @@ private val LightColorScheme = lightColorScheme(
     tertiary = Pink40
 )
 
-private val BlueColorScheme = lightColorScheme(
-    primary = BluePrimary,
-    secondary = BlueSecondary,
-    tertiary = BlueTertiary,
-    onPrimary = Color.White
-)
-
 val DefaultCustomColors = CustomColors(
     banner = Color(62, 103, 121),
     background = Color(90, 58, 49),
@@ -89,15 +82,54 @@ val BlueCustomColors = CustomColors(
     onInnerBox = Color.Black
 )
 
+val RedCustomColors = CustomColors(
+    banner = Color(183, 28, 28),
+    background = Color(255, 235, 238),
+    border = Color(211, 47, 47),
+    box = Color(244, 67, 54),
+    card = Color(255, 205, 210),
+    innerBox = Color.White,
+    onBackground = Color(183, 28, 28),
+    onBox = Color.White,
+    onCard = Color(183, 28, 28),
+    onInnerBox = Color.Black
+)
+
+val GreenCustomColors = CustomColors(
+    banner = Color(27, 94, 32),
+    background = Color(232, 245, 233),
+    border = Color(56, 142, 60),
+    box = Color(76, 175, 80),
+    card = Color(200, 230, 201),
+    innerBox = Color.White,
+    onBackground = Color(27, 94, 32),
+    onBox = Color.White,
+    onCard = Color(27, 94, 32),
+    onInnerBox = Color.Black
+)
+
+val DarkOledCustomColors = CustomColors(
+    banner = Color(33, 33, 33),
+    background = Color.Black,
+    border = Color(66, 66, 66),
+    box = Color(33, 33, 33),
+    card = Color(66, 66, 66),
+    innerBox = Color(33, 33, 33),
+    onBackground = Color.White,
+    onBox = Color.White,
+    onCard = Color.White,
+    onInnerBox = Color.White
+)
+
 @Composable
 fun AbsenceViewerTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    themeMode: Int = 0, // 0: Default, 1: Blue
+    themeMode: Int = 0, // 0: Tannenzapfen, 1: Blue, 2: Red, 3: Green, 4: Dark OLED
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
-        themeMode == 1 -> BlueColorScheme
+        themeMode == 4 -> DarkColorScheme // Use dark scheme for OLED
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
@@ -108,6 +140,9 @@ fun AbsenceViewerTheme(
 
     val customColors = when (themeMode) {
         1 -> BlueCustomColors
+        2 -> RedCustomColors
+        3 -> GreenCustomColors
+        4 -> DarkOledCustomColors
         else -> DefaultCustomColors
     }
 

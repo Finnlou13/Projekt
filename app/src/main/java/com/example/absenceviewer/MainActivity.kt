@@ -230,30 +230,33 @@ fun AbsencePlanTab(lifecycleOwner: LifecycleOwner, appSettings: MessageFilter){
 @Composable
 fun SettingsTab(currentTheme: Int, onThemeChange: (Int) -> Unit){
     val customColors = LocalCustomColors.current
+    val scrollState = rememberScrollState()
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp),
+            .padding(16.dp)
+            .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text("Theme Settings", color = customColors.onBackground, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Spacer(modifier = Modifier.height(16.dp))
         
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            RadioButton(
-                selected = currentTheme == 0,
-                onClick = { onThemeChange(0) }
-            )
-            Text("Tannenzapfen - Finns special´", color = customColors.onBackground, modifier = Modifier.padding(start = 8.dp))
-        }
+        ThemeOption("Tannenzapfen - Finns special´", 0, currentTheme, onThemeChange, customColors.onBackground)
+        ThemeOption("Blue Theme", 1, currentTheme, onThemeChange, customColors.onBackground)
+        ThemeOption("Red Theme", 2, currentTheme, onThemeChange, customColors.onBackground)
+        ThemeOption("Green Theme", 3, currentTheme, onThemeChange, customColors.onBackground)
+        ThemeOption("Dark", 4, currentTheme, onThemeChange, customColors.onBackground)
+    }
+}
 
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            RadioButton(
-                selected = currentTheme == 1,
-                onClick = { onThemeChange(1) }
-            )
-            Text("Blue Theme", color = customColors.onBackground, modifier = Modifier.padding(start = 8.dp))
-        }
+@Composable
+fun ThemeOption(name: String, themeId: Int, currentTheme: Int, onThemeChange: (Int) -> Unit, textColor: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        RadioButton(
+            selected = currentTheme == themeId,
+            onClick = { onThemeChange(themeId) }
+        )
+        Text(name, color = textColor, modifier = Modifier.padding(start = 8.dp))
     }
 }
 
