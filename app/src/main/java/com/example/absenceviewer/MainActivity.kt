@@ -1,9 +1,15 @@
 package com.example.absenceviewer
 
+import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -43,13 +49,14 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.example.absenceviewer.ui.theme.AbsenceViewerTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-
 
 val bannerColor =  Color(62, 103, 121)
 val backgroundColor = Color(90, 58, 49)
@@ -58,24 +65,70 @@ val boxColor = Color(49, 134, 29)
 val cardColor = Color(196, 203, 202)
 val innerBoxColor = Color(242, 245, 234)
 
-
 class MainActivity : ComponentActivity() {
 
-    private lateinit var appSettings : MessageFilter
+    private lateinit var appSettings: MessageFilter
+
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            sendTestNotification()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
-
-
         super.onCreate(savedInstanceState)
 
         appSettings = MessageFilter(this)
 
         enableEdgeToEdge()
         setContent {
-            MainView(this,appSettings)
+            MainView(this, appSettings)
+        }
+
+        createNotificationChannel()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) ==
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                sendTestNotification()
+            } else {
+                requestPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        } else {
+            sendTestNotification()
         }
     }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = "test"
+            val descriptionText = "Test Notification Channel"
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val channel = NotificationChannel("id", name, importance).apply {
+                description = descriptionText
+            }
+            val notificationManager: NotificationManager =
+                getSystemService(NotificationManager::class.java)
+            notificationManager.createNotificationChannel(channel)
+        }
+    }
+
+    private fun sendTestNotification() {
+        val notification = NotificationCompat.Builder(this, "id")
+            .setContentTitle("Test")
+            .setContentText("App wurde gestartet")
+            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.notify(1, notification)
+    }
 }
+
 data class Absence(val name: String, val subCategory : String, val begin : Int, val duration : Int)
 
 data class DayAbsence(val day: String ,val absenceOfClasses : Map<String,List<Absence>>)//absenceOfClasss is a map where the class name is maped to a List of Absences

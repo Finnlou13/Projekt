@@ -73,7 +73,6 @@ class AbsencePlan{
         println(absences)
 
         //TODO: filter Absences for class or teacher the user has
-
         return absences
     }
 
