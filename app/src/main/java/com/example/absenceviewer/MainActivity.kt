@@ -33,6 +33,9 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.RadioButton
@@ -51,6 +54,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -64,6 +68,7 @@ import com.example.absenceviewer.ui.theme.LocalCustomColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.exp
 
 class MainActivity : ComponentActivity() {
 
@@ -85,6 +90,12 @@ class MainActivity : ComponentActivity() {
 
         val sharedPref = getPreferences(Context.MODE_PRIVATE)
         var themeMode by mutableIntStateOf(sharedPref.getInt("theme_mode", 0))
+        var selectedClass: String by mutableStateOf(
+            sharedPref.getString(
+                "selected_class",
+                "NOT FOUND"
+            ) ?: "NOT FOUND"
+        )
 
         enableEdgeToEdge()
         setContent {
@@ -96,6 +107,11 @@ class MainActivity : ComponentActivity() {
                     onThemeChange = { newTheme ->
                         themeMode = newTheme
                         sharedPref.edit().putInt("theme_mode", newTheme).apply()
+                    },
+                    selectedClass,
+                    onClassChange = { newClass ->
+                        selectedClass = newClass
+                        sharedPref.edit().putString("selected_class", newClass).apply()
                     }
                 )
             }
@@ -122,12 +138,13 @@ data class DayAbsence(val day: String ,val absenceOfClasses : Map<String,List<Ab
 @Composable
 fun LoadAbsences(lifecycleOwner: LifecycleOwner, appSettings: MessageFilter){
     var result by remember { mutableStateOf<List<DayAbsence>?>(null) }
+    val context = LocalContext.current
 
     LaunchedEffect(key1 = Unit) {
         lifecycleOwner.lifecycleScope.launch {
             withContext(Dispatchers.IO) {
                 val absencePlan = AbsencePlan()
-                result = absencePlan.getAbsences()
+                result = absencePlan.getAbsences(context = context)
             }
         }
     }
@@ -228,24 +245,41 @@ fun AbsencePlanTab(lifecycleOwner: LifecycleOwner, appSettings: MessageFilter){
 }
 
 @Composable
-fun SettingsTab(currentTheme: Int, onThemeChange: (Int) -> Unit){
+fun SettingsTab(currentTheme: Int, onThemeChange: (Int) -> Unit,currentClass : String, onClassChange: (String) -> Unit){
     val customColors = LocalCustomColors.current
     val scrollState = rememberScrollState()
-    Column(
+    var expanded = true
+    DropdownMenu(
+        expanded = expanded,
+        onDismissRequest = {
+            expanded = false
+        },
         modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-            .verticalScroll(scrollState),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
+            .fillMaxWidth()
+
     ) {
         Text("Theme Settings", color = customColors.onBackground, fontSize = 24.sp, fontWeight = FontWeight.Bold)
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        ThemeOption("Tannenzapfen - Finns special´", 0, currentTheme, onThemeChange, customColors.onBackground)
-        ThemeOption("Blue Theme", 1, currentTheme, onThemeChange, customColors.onBackground)
-        ThemeOption("Red Theme", 2, currentTheme, onThemeChange, customColors.onBackground)
-        ThemeOption("Green Theme", 3, currentTheme, onThemeChange, customColors.onBackground)
-        ThemeOption("Dark", 4, currentTheme, onThemeChange, customColors.onBackground)
+
+        DropdownMenuItem(text = {Text("Tannenzapfen - Finns special´")}, {
+            expanded = false
+            onThemeChange(0)
+        })
+        DropdownMenuItem(text = {Text("Blue Theme")}, {
+            expanded = false
+            onThemeChange(1)
+        })
+        DropdownMenuItem(text = {Text(" Red Theme")}, {
+            expanded = false
+            onThemeChange(2)
+        })
+        DropdownMenuItem(text = {Text("Green Theme")}, {
+            expanded = false
+            onThemeChange(3)
+        })
+        DropdownMenuItem(text = {Text("Dark")}, {
+            expanded = false
+            onThemeChange(4)
+        })
     }
 }
 
@@ -347,7 +381,10 @@ fun MainView(
     mainActivity: MainActivity, 
     appSettings: MessageFilter,
     currentTheme: Int,
-    onThemeChange: (Int) -> Unit
+    onThemeChange: (Int) -> Unit,
+    selectedClass : String,
+    onClassChange: (String) -> Unit
+
 ) {
     val customColors = LocalCustomColors.current
     var selectedTabIndex by remember { mutableIntStateOf(0) }
@@ -370,7 +407,7 @@ fun MainView(
         {
             when (selectedTabIndex) {
                 0 -> AbsencePlanTab(mainActivity, appSettings)
-                1 -> SettingsTab(currentTheme, onThemeChange)
+                1 -> SettingsTab(currentTheme, onThemeChange,selectedClass,onClassChange)
             }
         }
     }

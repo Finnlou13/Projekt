@@ -1,5 +1,10 @@
 package com.example.absenceviewer
 
+import android.content.Context
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import java.time.LocalDate
@@ -62,13 +67,13 @@ class AbsencePlan{
         return newHtml.split("<h3>Nächster Schultag")
     }
 
-    fun getAbsences() : MutableList<DayAbsence>{
+    fun getAbsences(context : Context) : MutableList<DayAbsence>{
         val absences = mutableListOf<DayAbsence>()
 
         val html = getAbsenceHtml()
         val absence_days = splitAbsenceHtml(html)
         absence_days.forEach {
-            absences.add(transformDay(it))
+            absences.add(transformDay(it, context))
         }
         println(absences)
 
@@ -76,32 +81,39 @@ class AbsencePlan{
         return absences
     }
 
-    private fun transformDay(dayHtml : String) : DayAbsence{
+    private fun transformDay(dayHtml : String,context: Context) : DayAbsence{
         val splitedHtml = dayHtml.split("</h3>")
         val dateString = splitedHtml[0].removeSuffix(")").removePrefix(" (")
         val classAbsenceStrings = splitedHtml[1].split("<div class=\"accordion-item\">").drop(1)
 
+        val sharedPref = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
+        val selectedClass = sharedPref.getString("selected_class", "NOT FOUND") ?: "NOT FOUND"
         val dayAbsences = mutableMapOf<String, List<Absence>>()
         classAbsenceStrings.forEach{
             val splitedClassHtml = it.split("</h2>")
-            val classNumber = splitedClassHtml[0].split("</button>")[0].split(">").last().removePrefix("\r\n                    ").removeSuffix("                                    ")
+            val classNumber = splitedClassHtml[0].split("</button>")[0].split(">").last().trim()
             print(classNumber + "Nummer der Klasse")
 
-            dayAbsences[classNumber] = transformAbsence(splitedClassHtml[1])
+            if(classNumber == selectedClass) {
+                dayAbsences[classNumber] = transformAbsence(splitedClassHtml[1],true)
+            }
+            else{
+                dayAbsences[classNumber] = transformAbsence(splitedClassHtml[1])
+            }
 
         }
         return DayAbsence(splitedHtml[0],dayAbsences)
 
     }
-    private fun transformAbsence(classHtml : String) : List<Absence>{
+    private fun transformAbsence(classHtml : String, send : Boolean = false) : List<Absence>{
         val subAbsence = classHtml.removeSuffix("</div>").split("<div class=\"card align-top\">").drop(1)
         var classAbsence = mutableListOf<Absence>()
         subAbsence.forEach{
-            classAbsence += transformSubAbsence(it)
+            classAbsence += transformSubAbsence(it,send)
         }
         return classAbsence
     }
-    private fun transformSubAbsence(subAbsenceHtml : String) : List<Absence>{
+    private fun transformSubAbsence(subAbsenceHtml : String,send : Boolean = true) : List<Absence>{
         val splitedSubAbsenceHtml = subAbsenceHtml.split("<div class=\"card-body\">")
         val subCategory = splitedSubAbsenceHtml[0].removePrefix("\r\n                            <div class=\"card-header\">\r\n                                ").removeSuffix("                            </div>\r\n                            ")
         val lessonList = splitedSubAbsenceHtml[1].split("<li class=\"lesson-list-item \">\r\n                                            <span class=\"badge period-badge\" aria-label=\"").drop(1)
