@@ -35,9 +35,12 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -228,14 +231,6 @@ fun LessonAbsence(lesson : Absence, grade: String){
             text = "Stunde " + lesson.begin.toString() + "-" + (lesson.begin + lesson.duration - 1).toString() + "\n" + lesson.name + "\n" + lesson.subCategory,
             style = TextStyle(fontWeight = FontWeight.Bold, color = customColors.onInnerBox)
         )
-        Checkbox(
-            checked = isChecked,
-            onCheckedChange = {
-                newCheckedState ->
-                isChecked = newCheckedState
-                updateMessagedGrades(grade,newCheckedState)
-            }
-        )
     }
 }
 
@@ -244,42 +239,65 @@ fun AbsencePlanTab(lifecycleOwner: LifecycleOwner, appSettings: MessageFilter){
     LoadAbsences(lifecycleOwner, appSettings)
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsTab(currentTheme: Int, onThemeChange: (Int) -> Unit,currentClass : String, onClassChange: (String) -> Unit){
+fun SettingsTab(currentTheme: Int, onThemeChange: (Int) -> Unit, currentClass: String, onClassChange: (String) -> Unit) {
     val customColors = LocalCustomColors.current
-    val scrollState = rememberScrollState()
-    var expanded = true
-    DropdownMenu(
-        expanded = expanded,
-        onDismissRequest = {
-            expanded = false
-        },
+    var expanded by remember { mutableStateOf(false) }
+    val themes = listOf("Tannenzapfen - Finns special´", "Blue Theme", "Red Theme", "Green Theme", "Dark")
+
+    Column(
         modifier = Modifier
-            .fillMaxWidth()
-
+            .fillMaxSize()
+            .padding(16.dp)
     ) {
-        Text("Theme Settings", color = customColors.onBackground, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text(
+            text = "Theme Settings",
+            color = customColors.onBackground,
+            fontSize = 24.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
 
-        DropdownMenuItem(text = {Text("Tannenzapfen - Finns special´")}, {
-            expanded = false
-            onThemeChange(0)
-        })
-        DropdownMenuItem(text = {Text("Blue Theme")}, {
-            expanded = false
-            onThemeChange(1)
-        })
-        DropdownMenuItem(text = {Text(" Red Theme")}, {
-            expanded = false
-            onThemeChange(2)
-        })
-        DropdownMenuItem(text = {Text("Green Theme")}, {
-            expanded = false
-            onThemeChange(3)
-        })
-        DropdownMenuItem(text = {Text("Dark")}, {
-            expanded = false
-            onThemeChange(4)
-        })
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = themes.getOrElse(currentTheme) { "Select Theme" },
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black,
+                    focusedBorderColor = customColors.border,
+                    unfocusedBorderColor = customColors.border.copy(alpha = 0.5f)
+                ),
+                modifier = Modifier
+                    .menuAnchor()
+                    .fillMaxWidth()
+            )
+
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                themes.forEachIndexed { index, themeName ->
+                    DropdownMenuItem(
+                        text = { Text(text = themeName) },
+                        onClick = {
+                            onThemeChange(index)
+                            expanded = false
+                        },
+                        contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -308,7 +326,7 @@ fun TabChanger(selectedTabIndex: Int,
         modifier = Modifier
             .fillMaxWidth()
             .fillMaxHeight(0.1F)
-            .background(customColors.box) ,
+            .background(customColors.box),
         containerColor = customColors.box,
         contentColor = customColors.onBox
     )

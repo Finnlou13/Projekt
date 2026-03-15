@@ -72,6 +72,9 @@ class AbsencePlan{
 
         val html = getAbsenceHtml()
         val absence_days = splitAbsenceHtml(html)
+        if(absence_days.size != 2 && absence_days.size != 0) {
+            throw Exception("Something went wrong while parsing the HTML")
+        }
         absence_days.forEach {
             absences.add(transformDay(it, context))
         }
