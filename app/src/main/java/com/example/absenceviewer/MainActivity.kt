@@ -353,7 +353,7 @@ fun updateMessagedGrades(grade : String, isChecked : Boolean){
 fun TabChanger(selectedTabIndex: Int,
                onTabSelected: (Int) -> Unit) {
     val customColors = LocalCustomColors.current
-    val tabs = listOf("Absences", "Settings")
+    val tabs = listOf("Absences")
     TabRow(
         selectedTabIndex = selectedTabIndex,
         modifier = Modifier
@@ -387,6 +387,7 @@ fun StundenplanAdd(onSettingsClick: () -> Unit){
             .fillMaxWidth()
             .fillMaxHeight(0.1F)
             .background(customColors.banner)
+            .padding(top = 10.dp)
     )
     {
         Image(
