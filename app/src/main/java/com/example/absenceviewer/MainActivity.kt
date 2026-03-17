@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.copy
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -67,6 +68,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import com.example.absenceviewer.ui.theme.AbsenceViewerTheme
+import com.example.absenceviewer.ui.theme.CustomColors
 import com.example.absenceviewer.ui.theme.LocalCustomColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -93,11 +95,12 @@ class MainActivity : ComponentActivity() {
 
         val sharedPref = getPreferences(Context.MODE_PRIVATE)
         var themeMode by mutableIntStateOf(sharedPref.getInt("theme_mode", 0))
-        var selectedClass: String by mutableStateOf(
-            sharedPref.getString(
-                "selected_class",
-                "NOT FOUND"
-            ) ?: "NOT FOUND"
+
+        val savedClassName = sharedPref.getString("selected_class", ClassNames.All.name)
+
+        // 2. Convert it back to the Enum type
+        var selectedClass by mutableStateOf(
+            ClassNames.entries.find { it.name == savedClassName } ?: ClassNames.All
         )
 
         enableEdgeToEdge()
@@ -114,7 +117,7 @@ class MainActivity : ComponentActivity() {
                     selectedClass,
                     onClassChange = { newClass ->
                         selectedClass = newClass
-                        sharedPref.edit().putString("selected_class", newClass).apply()
+                        sharedPref.edit().putString("selected_class", newClass.name).apply()
                     }
                 )
             }
@@ -241,22 +244,66 @@ fun AbsencePlanTab(lifecycleOwner: LifecycleOwner, appSettings: MessageFilter){
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsTab(currentTheme: Int, onThemeChange: (Int) -> Unit, currentClass: String, onClassChange: (String) -> Unit) {
+fun SettingsTab(
+    currentTheme: Int,
+    onThemeChange: (Int) -> Unit,
+    currentClass: ClassNames,
+    onClassChange: (ClassNames) -> Unit // Changed to use the Enum for type safety
+) {
     val customColors = LocalCustomColors.current
-    var expanded by remember { mutableStateOf(false) }
-    val themes = listOf("Tannenzapfen - Finns special´", "Blue Theme", "Red Theme", "Green Theme", "Dark")
+
+    // Remember lists to avoid recreation on every recomposition
+    val themes = remember { listOf("Tannenzapfen", "Blue Theme", "Red Theme", "Green Theme", "Dark") }
+    val classEntries = remember { ClassNames.entries }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp) // Consistent spacing between sections
     ) {
+        // Theme Selection
+        SettingsDropdown(
+            label = "Theme Settings",
+            selectedOptionText = themes.getOrElse(currentTheme) { "Select Theme" },
+            options = themes,
+            onOptionSelected = { index, _ -> onThemeChange(index) },
+            customColors = customColors
+        )
+
+        // Class Selection
+        SettingsDropdown(
+            label = "Klasse",
+            selectedOptionText = currentClass.label,
+            options = classEntries.map { it.label },
+            onOptionSelected = { index, _ ->
+                onClassChange(classEntries[index])
+            },
+            customColors = customColors
+        )
+    }
+}
+
+/**
+ * A reusable Dropdown component for settings
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SettingsDropdown(
+    label: String,
+    selectedOptionText: String,
+    options: List<String>,
+    onOptionSelected: (index: Int, text: String) -> Unit,
+    customColors: CustomColors // Replace with your actual CustomColors type
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
-            text = "Theme Settings",
+            text = label,
             color = customColors.onBackground,
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 16.dp)
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold
         )
 
         ExposedDropdownMenuBox(
@@ -265,7 +312,7 @@ fun SettingsTab(currentTheme: Int, onThemeChange: (Int) -> Unit, currentClass: S
             modifier = Modifier.fillMaxWidth()
         ) {
             OutlinedTextField(
-                value = themes.getOrElse(currentTheme) { "Select Theme" },
+                value = selectedOptionText,
                 onValueChange = {},
                 readOnly = true,
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
@@ -286,11 +333,11 @@ fun SettingsTab(currentTheme: Int, onThemeChange: (Int) -> Unit, currentClass: S
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
             ) {
-                themes.forEachIndexed { index, themeName ->
+                options.forEachIndexed { index, text ->
                     DropdownMenuItem(
-                        text = { Text(text = themeName) },
+                        text = { Text(text = text) },
                         onClick = {
-                            onThemeChange(index)
+                            onOptionSelected(index, text)
                             expanded = false
                         },
                         contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding
@@ -400,8 +447,8 @@ fun MainView(
     appSettings: MessageFilter,
     currentTheme: Int,
     onThemeChange: (Int) -> Unit,
-    selectedClass : String,
-    onClassChange: (String) -> Unit
+    selectedClass : ClassNames,
+    onClassChange: (ClassNames) -> Unit
 
 ) {
     val customColors = LocalCustomColors.current
