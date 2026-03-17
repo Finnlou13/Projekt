@@ -1,7 +1,6 @@
 package com.example.absenceviewer
 
 import android.Manifest
-import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -9,6 +8,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowColumn
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
@@ -24,8 +25,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
@@ -51,6 +55,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -152,50 +157,46 @@ fun LoadAbsences(lifecycleOwner: LifecycleOwner, appSettings: MessageFilter){
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun AbsenceCards(dayAbsence: DayAbsence){
+fun AbsenceCards(dayAbsence: DayAbsence) {
     val customColors = LocalCustomColors.current
-    Box(
+    Card(
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = customColors.box),
+        border = BorderStroke(1.dp, customColors.border.copy(alpha = 0.5f)),
         modifier = Modifier
             .padding(8.dp)
-            .border(2.dp, customColors.border)
-            .background(customColors.box)
             .fillMaxWidth()
     ) {
-        Column (
-            modifier = Modifier.padding(8.dp)
-        ){
+        Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = dayAbsence.day,
-                style = TextStyle(fontWeight = FontWeight.ExtraBold, color = customColors.onBox),
-                modifier = Modifier
-                    .padding(top = 4.dp, bottom = 8.dp)
+                style = TextStyle(fontSize = 20.sp, fontWeight = FontWeight.Black, color = customColors.onBox),
+                modifier = Modifier.padding(bottom = 12.dp)
             )
-            for (currentClass in dayAbsence.absenceOfClasses.keys) {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor =  customColors.card,
-                    ),
-                    modifier = Modifier
-                        .padding(4.dp)
-                ) {
-                    Text(
-                        text = "Klasse " + currentClass.label,
-                        style = TextStyle(fontWeight = FontWeight.Bold, color = customColors.onCard),
-                        modifier = Modifier
-                            .padding(8.dp)
-                    )
-                    FlowRow(
-                        modifier = Modifier
-                            .padding(8.dp)
-                            .fillMaxWidth()
-                    ) {
-                        for (absence in dayAbsence.absenceOfClasses[currentClass] ?: emptyList()) {
-                            LessonAbsence(absence,currentClass.name)
-                        }
-                    }
-                }
+            dayAbsence.absenceOfClasses.forEach { (currentClass, absences) ->
+                ClassCard(currentClass, absences)
+            }
+        }
+    }
+}
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ClassCard(className: ClassName, absences: List<Absence>) {
+    val customColors = LocalCustomColors.current
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = customColors.card),
+        modifier = Modifier.padding(vertical = 6.dp).fillMaxWidth()
+    ) {
+        Column(modifier = Modifier.padding(12.dp).fillMaxWidth()) {
+            Text(
+                text = if (className == ClassName.General) className.label else "Klasse ${className.label}",
+                fontWeight = FontWeight.Bold,
+                color = customColors.onCard
+            )
+            FlowColumn(modifier = Modifier.align(Alignment.Start)) {
+                absences.forEach { LessonAbsence(it, className.label) }
             }
         }
     }
@@ -211,14 +212,17 @@ fun LessonAbsence(lesson : Absence, grade: String){
             containerColor = customColors.innerBox,
         ),
         modifier = Modifier
-            .padding(4.dp)
-            .fillMaxWidth(0.45f)
+            .padding(horizontal = 20.dp, vertical = 4.dp)
+            .widthIn(min = 100.dp),
+        shape = RoundedCornerShape(12.dp),
+
     ) {
         Text(
-            modifier = Modifier
-            .padding(start = 8.dp),
+            modifier = Modifier.padding(start = 8.dp),
             text = time + "\n" + lesson.name + "\n" + lesson.subCategory,
-            style = TextStyle(fontWeight = FontWeight.Bold, color = customColors.onInnerBox)
+            fontWeight = FontWeight.Bold,
+            color = customColors.onInnerBox
+
         )
     }
 }
@@ -239,18 +243,17 @@ fun SettingsTab(
     val customColors = LocalCustomColors.current
 
     // Remember lists to avoid recreation on every recomposition
-    val themes = remember { listOf("Tannenzapfen", "Blue Theme", "Red Theme", "Green Theme", "Dark") }
+    val themes = remember { listOf("Tannenzapfen", "Wald", "Blau", "Rot", "Grün", "Ozean", "Sonnenuntergang", "Lavender", "Mitternacht") }
     val classEntries = remember { ClassName.entries }
 
     Column(
         modifier = Modifier
-            .fillMaxSize()
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp) // Consistent spacing between sections
+        verticalArrangement = Arrangement.spacedBy(20.dp) // Consistent spacing between sections
     ) {
         // Theme Selection
         SettingsDropdown(
-            label = "Theme Settings",
+            label = "App Theme",
             selectedOptionText = themes.getOrElse(currentTheme) { "Select Theme" },
             options = themes,
             onOptionSelected = { index, _ -> onThemeChange(index) },
@@ -259,7 +262,7 @@ fun SettingsTab(
 
         // Class Selection
         SettingsDropdown(
-            label = "Klasse",
+            label = "Meine Klasse",
             selectedOptionText = currentClass.label,
             options = classEntries.map { it.label },
             onOptionSelected = { index, _ ->
@@ -284,23 +287,24 @@ fun SettingsDropdown(
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column {
         Text(
             text = label,
             color = customColors.onBackground,
             fontSize = 20.sp,
-            fontWeight = FontWeight.Bold
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 8.dp)
         )
 
         ExposedDropdownMenuBox(
             expanded = expanded,
-            onExpandedChange = { expanded = !expanded },
-            modifier = Modifier.fillMaxWidth()
+            onExpandedChange = { expanded = !expanded }
         ) {
             OutlinedTextField(
                 value = selectedOptionText,
                 onValueChange = {},
                 readOnly = true,
+                shape = RoundedCornerShape(16.dp),
                 trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
                 colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors(
                     focusedContainerColor = Color.White,
@@ -357,9 +361,8 @@ fun TabChanger(selectedTabIndex: Int,
     TabRow(
         selectedTabIndex = selectedTabIndex,
         modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxHeight(0.1F)
-            .background(customColors.box),
+            .padding(8.dp)
+            .clip(RoundedCornerShape(16.dp)),
         containerColor = customColors.box,
         contentColor = customColors.onBox
     )
@@ -371,7 +374,7 @@ fun TabChanger(selectedTabIndex: Int,
                     text = {
                         Text(
                             text = title,
-                            style = TextStyle(fontWeight = FontWeight.Bold)
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 )
@@ -380,14 +383,14 @@ fun TabChanger(selectedTabIndex: Int,
 }
 
 @Composable
-fun StundenplanAdd(onSettingsClick: () -> Unit){
+fun HeaderSection(onSettingsClick: () -> Unit){
     val customColors = LocalCustomColors.current
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .fillMaxHeight(0.1F)
+            .height(120.dp)
             .background(customColors.banner)
-            .padding(top = 10.dp)
+            .padding(16.dp)
     )
     {
         Image(
@@ -403,21 +406,17 @@ fun StundenplanAdd(onSettingsClick: () -> Unit){
         Text(
             text = "Vertretungsplan",
             modifier = Modifier
-                .fillMaxSize()
-                .wrapContentSize(Alignment.TopStart)
-                .padding(top = 15.dp)
-                .padding(horizontal = 15.dp),
-            fontSize = 40.sp,
+                .align(Alignment.CenterStart),
+            fontSize = 32.sp,
             fontStyle = androidx.compose.ui.text.font.FontStyle.Italic,
             color = Color.White,
-            fontWeight = FontWeight(1000)
+            fontWeight = FontWeight.Black
         )
         
         IconButton(
             onClick = onSettingsClick,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(8.dp)
         ) {
             Icon(
                 imageVector = Icons.Default.Settings,
@@ -441,9 +440,11 @@ fun MainView(
     val customColors = LocalCustomColors.current
     var selectedTabIndex by remember { mutableIntStateOf(0) }
 
-    Column()
+    Column(modifier = Modifier
+        .fillMaxSize()
+        .background(customColors.background))
     {
-        StundenplanAdd(onSettingsClick = { selectedTabIndex = 1 })
+        HeaderSection(onSettingsClick = { selectedTabIndex = 1 })
 
         TabChanger(
             selectedTabIndex = selectedTabIndex,
@@ -452,9 +453,8 @@ fun MainView(
 
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .fillMaxHeight()
-                .background(customColors.background)
+                .fillMaxSize()
+                .padding(horizontal = 8.dp)
         )
         {
             when (selectedTabIndex) {
