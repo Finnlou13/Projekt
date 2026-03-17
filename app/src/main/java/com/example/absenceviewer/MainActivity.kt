@@ -9,7 +9,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.copy
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,7 +18,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,8 +31,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -73,11 +69,11 @@ import com.example.absenceviewer.ui.theme.LocalCustomColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.math.exp
 
 class MainActivity : ComponentActivity() {
 
     private lateinit var appSettings: MessageFilter
+    private lateinit var settings: Settings
 
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -92,16 +88,10 @@ class MainActivity : ComponentActivity() {
 
         NotificationHelper.initialize(this)
         appSettings = MessageFilter(this)
+        settings = Settings(this)
 
-        val sharedPref = getPreferences(Context.MODE_PRIVATE)
-        var themeMode by mutableIntStateOf(sharedPref.getInt("theme_mode", 0))
-
-        val savedClassName = sharedPref.getString("selected_class", ClassNames.All.name)
-
-        // 2. Convert it back to the Enum type
-        var selectedClass by mutableStateOf(
-            ClassNames.entries.find { it.name == savedClassName } ?: ClassNames.All
-        )
+        var themeMode by mutableIntStateOf(settings.themeMode)
+        var selectedClass by mutableStateOf(settings.selectedClass)
 
         enableEdgeToEdge()
         setContent {
@@ -112,12 +102,12 @@ class MainActivity : ComponentActivity() {
                     currentTheme = themeMode,
                     onThemeChange = { newTheme ->
                         themeMode = newTheme
-                        sharedPref.edit().putInt("theme_mode", newTheme).apply()
+                        settings.themeMode = newTheme
                     },
                     selectedClass,
                     onClassChange = { newClass ->
                         selectedClass = newClass
-                        sharedPref.edit().putString("selected_class", newClass.name).apply()
+                        settings.selectedClass = newClass
                     }
                 )
             }
@@ -136,10 +126,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
-
-data class Absence(val name: String, val subCategory : String, val begin : Int, val duration : Int)
-
-data class DayAbsence(val day: String ,val absenceOfClasses : Map<String,List<Absence>>)//absenceOfClasss is a map where the class name is maped to a List of Absences
 
 @Composable
 fun LoadAbsences(lifecycleOwner: LifecycleOwner, appSettings: MessageFilter){
@@ -195,7 +181,7 @@ fun AbsenceCards(dayAbsence: DayAbsence){
                         .padding(4.dp)
                 ) {
                     Text(
-                        text = currentClass,
+                        text = "Klasse " + currentClass.label,
                         style = TextStyle(fontWeight = FontWeight.Bold, color = customColors.onCard),
                         modifier = Modifier
                             .padding(8.dp)
@@ -206,7 +192,7 @@ fun AbsenceCards(dayAbsence: DayAbsence){
                             .fillMaxWidth()
                     ) {
                         for (absence in dayAbsence.absenceOfClasses[currentClass] ?: emptyList()) {
-                            LessonAbsence(absence,currentClass)
+                            LessonAbsence(absence,currentClass.name)
                         }
                     }
                 }
@@ -219,6 +205,7 @@ fun AbsenceCards(dayAbsence: DayAbsence){
 fun LessonAbsence(lesson : Absence, grade: String){
     val customColors = LocalCustomColors.current
     var isChecked: Boolean by remember { mutableStateOf(false) }
+    val time = if (lesson.duration > 1) "Stunde " + lesson.begin.toString() + "-" + (lesson.begin + lesson.duration - 1).toString() else "Stunde " + lesson.begin.toString()
     Card(
         colors = CardDefaults.cardColors(
             containerColor = customColors.innerBox,
@@ -226,12 +213,11 @@ fun LessonAbsence(lesson : Absence, grade: String){
         modifier = Modifier
             .padding(4.dp)
             .fillMaxWidth(0.45f)
-            .height(60.dp)
     ) {
         Text(
             modifier = Modifier
             .padding(start = 8.dp),
-            text = "Stunde " + lesson.begin.toString() + "-" + (lesson.begin + lesson.duration - 1).toString() + "\n" + lesson.name + "\n" + lesson.subCategory,
+            text = time + "\n" + lesson.name + "\n" + lesson.subCategory,
             style = TextStyle(fontWeight = FontWeight.Bold, color = customColors.onInnerBox)
         )
     }
@@ -247,14 +233,14 @@ fun AbsencePlanTab(lifecycleOwner: LifecycleOwner, appSettings: MessageFilter){
 fun SettingsTab(
     currentTheme: Int,
     onThemeChange: (Int) -> Unit,
-    currentClass: ClassNames,
-    onClassChange: (ClassNames) -> Unit // Changed to use the Enum for type safety
+    currentClass: ClassName,
+    onClassChange: (ClassName) -> Unit // Changed to use the Enum for type safety
 ) {
     val customColors = LocalCustomColors.current
 
     // Remember lists to avoid recreation on every recomposition
     val themes = remember { listOf("Tannenzapfen", "Blue Theme", "Red Theme", "Green Theme", "Dark") }
-    val classEntries = remember { ClassNames.entries }
+    val classEntries = remember { ClassName.entries }
 
     Column(
         modifier = Modifier
@@ -443,12 +429,12 @@ fun StundenplanAdd(onSettingsClick: () -> Unit){
 
 @Composable
 fun MainView(
-    mainActivity: MainActivity, 
+    mainActivity: MainActivity,
     appSettings: MessageFilter,
     currentTheme: Int,
     onThemeChange: (Int) -> Unit,
-    selectedClass : ClassNames,
-    onClassChange: (ClassNames) -> Unit
+    selectedClass : ClassName,
+    onClassChange: (ClassName) -> Unit
 
 ) {
     val customColors = LocalCustomColors.current

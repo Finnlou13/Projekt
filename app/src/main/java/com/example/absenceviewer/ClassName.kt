@@ -1,6 +1,6 @@
 package com.example.absenceviewer
 
-enum class ClassNames(val label: String) {
+enum class ClassName(val label: String) {
     G5("5L"),
     G6("6L"),
     G7a("7a"),
@@ -18,5 +18,6 @@ enum class ClassNames(val label: String) {
     G10("10"),
     G11("11"),
     G12("12"),
+    General("Allgemein"),
     All("Alle"),
 }

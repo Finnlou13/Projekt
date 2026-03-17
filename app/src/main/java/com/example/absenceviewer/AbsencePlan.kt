@@ -1,15 +1,37 @@
 package com.example.absenceviewer
 
 import android.content.Context
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import java.time.LocalDate
 
+data class Absence(val name: String, val subCategory : String, val begin : Int, val duration : Int)
+
+data class DayAbsence(val day: String ,val absenceOfClasses : Map<ClassName,List<Absence>>)//  is a map where the class name is maped to a List of Absences
+
+
 class AbsencePlan{
+
+    private val classNameMapping : Map<String, ClassName> = mapOf(
+        "Allgemein" to ClassName.General,
+        "Klasse 5L" to ClassName.G5,
+        "Klasse 6L" to ClassName.G6,
+        "Klasse 7a" to ClassName.G7a,
+        "Klasse 7b" to ClassName.G7b,
+        "Klasse 7c" to ClassName.G7c,
+        "Klasse 7d" to ClassName.G7d,
+        "Klasse 8a" to ClassName.G8a,
+        "Klasse 8b" to ClassName.G8b,
+        "Klasse 8c" to ClassName.G8c,
+        "Klasse 8d" to ClassName.G8d,
+        "Klasse 9a" to ClassName.G9a,
+        "Klasse 9b" to ClassName.G9b,
+        "Klasse 9c" to ClassName.G9c,
+        "Klasse 9d" to ClassName.G9d,
+        "Klasse 10" to ClassName.G10,
+        "Klasse 11" to ClassName.G11,
+        "Klasse 12" to ClassName.G12
+    )
     private val monthMapping : Map<String, String> = mapOf(
         "JANUARY" to "januar",
         "FEBRUARY" to "februar",
@@ -89,19 +111,22 @@ class AbsencePlan{
         val dateString = splitedHtml[0].removeSuffix(")").removePrefix(" (")
         val classAbsenceStrings = splitedHtml[1].split("<div class=\"accordion-item\">").drop(1)
 
-        val sharedPref = context.getSharedPreferences("prefs", Context.MODE_PRIVATE)
-        val selectedClass = sharedPref.getString("selected_class", "NOT FOUND") ?: "NOT FOUND"
-        val dayAbsences = mutableMapOf<String, List<Absence>>()
+        val settings = Settings(context)
+        val selectedClass = settings.selectedClass
+        val dayAbsences = mutableMapOf<ClassName, List<Absence>>()
         classAbsenceStrings.forEach{
             val splitedClassHtml = it.split("</h2>")
-            val classNumber = splitedClassHtml[0].split("</button>")[0].split(">").last().trim()
-            print(classNumber + "Nummer der Klasse")
+            val classLabelFromHtml = splitedClassHtml[0].split("</button>")[0].split(">").last().trim()
 
-            if(classNumber == selectedClass) {
-                dayAbsences[classNumber] = transformAbsence(splitedClassHtml[1],true)
+            val currentClassName = classNameMapping[classLabelFromHtml] ?: ClassName.All
+
+            print(currentClassName.label + "Nummer der Klasse\tselectedClass "+ selectedClass.label +"\n")
+
+            if(currentClassName == selectedClass) {
+                dayAbsences[currentClassName] = transformAbsence(splitedClassHtml[1],true)
             }
             else{
-                dayAbsences[classNumber] = transformAbsence(splitedClassHtml[1])
+                dayAbsences[currentClassName] = transformAbsence(splitedClassHtml[1])
             }
 
         }
