@@ -46,6 +46,7 @@ class AbsencePlan{
         "NOVEMBER" to "november",
         "DECEMBER" to "dezember"
     )
+
     private fun getAbsenceHtml() : String{
         println("started")
         val currentMonth = LocalDate.now().month
@@ -90,7 +91,7 @@ class AbsencePlan{
     }
 
     fun getAbsences(context : Context) : MutableList<DayAbsence>{
-        val absences = mutableListOf<DayAbsence>()
+        var absences = mutableListOf<DayAbsence>()
 
         val html = getAbsenceHtml()
         val absence_days = splitAbsenceHtml(html)
@@ -102,8 +103,29 @@ class AbsencePlan{
         }
         println(absences)
 
-        //TODO: filter Absences for class or teacher the user has
+
+        absences = filterAbsences(absences, context)
+
         return absences
+    }
+
+    private fun filterAbsences(absences: MutableList<DayAbsence>, context: Context) : MutableList<DayAbsence>{
+        var newAbscences = mutableListOf<DayAbsence>()
+        val settings = Settings(context)
+        val selectedClass = settings.selectedClass
+
+        absences.forEach {
+            val dayAbsence = it
+            var newClassAbsence = mutableMapOf<ClassName, List<Absence>>()
+            dayAbsence.absenceOfClasses.keys.forEach {
+                if(it == selectedClass || selectedClass == ClassName.All){
+                    newClassAbsence[it] = dayAbsence.absenceOfClasses.getValue(it)
+                }
+            }
+            newAbscences.add(DayAbsence(it.day, newClassAbsence))
+        }
+
+        return newAbscences
     }
 
     private fun transformDay(dayHtml : String,context: Context) : DayAbsence{
